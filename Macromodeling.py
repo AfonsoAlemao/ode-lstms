@@ -22,25 +22,43 @@ def load_data(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
 
-    current_step = []
+    time = []
     input = []
     output = []
     collect_data = False
+    all_time = []
+    all_input = []
+    all_output = []
+    min_length = 0
 
     for line in lines:
         if line.startswith('Step Information'):
-            if current_step:
-                collect_data = True
+            if time != []:
+                all_time.append(time)
+                all_input.append(input)
+                all_output.append(output)
+                if min_length == 0 or len(time) < min_length:
+                    min_length = len(time)
             collect_data = True
         elif line.strip() and collect_data:
             parts = line.split()
-            input.append(float(parts[1]))
-            output.append(float(parts[2]))
-            current_step.append([float(parts[1]), float(parts[2])])
+            time.append([float(parts[0])])
+            input.append([float(parts[1])])
+            output.append([float(parts[2])])
         elif 'time' in line and 'V(1)' in line and 'V(20)' in line:
             collect_data = True
+            
+        all_time_final = []
+        all_input_final = []
+        all_output_final = []
+            
+        for time_aux, input_aux, output_aux in all_time, all_input, all_output:
+            if len(time_aux) > min_length:
+                all_time_final.time_aux[:min_length]
+                all_input_final.input_aux[:min_length]
+                all_output_final.output_aux[:min_length]
 
-    return current_step, input, output
+    return all_time_final, all_input_final, all_output_final, min_length
 
 def reshape_inputs(inputs, time_steps, features):
     # Assuming `inputs` is a flat list of floats, we reshape it into [samples, time_steps, features]
@@ -57,6 +75,12 @@ parser.add_argument("--size", default=64, type=int)
 parser.add_argument("--epochs", default=200, type=int)
 parser.add_argument("--lr", default=0.005, type=float)
 args = parser.parse_args()
+
+time, inputs, targets, seq_length = load_data('./circuits/ADVANCED_AMPLIFIER2.txt')
+input_size = 1
+        
+if not time or not inputs or not targets:
+    raise ValueError("No data loaded. Check the file path and file format.")
 
 data = Walker2dImitationData(seq_len=64)
 
@@ -85,13 +109,13 @@ elif args.model == "hawk":
 else:
     raise ValueError("Unknown model type '{}'".format(args.model))
 
-signal_input = tf.keras.Input(shape=(data.seq_len, data.input_size), name="robot")
-time_input = tf.keras.Input(shape=(data.seq_len, 1), name="time")
+signal_input = tf.keras.Input(shape=(seq_length, input_size), name="robot")
+time_input = tf.keras.Input(shape=(seq_length, 1), name="time")
 
 rnn = tf.keras.layers.RNN(cell, time_major=False, return_sequences=True)
 
 output_states = rnn((signal_input, time_input))
-y = tf.keras.layers.Dense(data.input_size)(output_states)
+y = tf.keras.layers.Dense(input_size)(output_states)
 
 model = tf.keras.Model(inputs=[signal_input, time_input], outputs=[y])
 
