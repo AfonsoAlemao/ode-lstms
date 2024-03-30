@@ -54,11 +54,49 @@ def load_data(file_path):
             
         for time_aux, input_aux, output_aux in all_time, all_input, all_output:
             if len(time_aux) > min_length:
-                all_time_final.time_aux[:min_length]
-                all_input_final.input_aux[:min_length]
-                all_output_final.output_aux[:min_length]
+                all_time_final.append(time_aux[:min_length])
+                all_input_final.append(input_aux[:min_length])
+                all_output_final.append(output_aux[:min_length])
 
     return all_time_final, all_input_final, all_output_final, min_length
+
+
+def split_dataset(all_time, all_input, all_output, min_length, train_ratio=0.7, test_ratio=0.2, validation_ratio=0.1):
+    import numpy as np
+    
+    # Calculate the number of samples in each set
+    total_samples = len(all_time)
+    train_samples = int(total_samples * train_ratio)
+    test_samples = int(total_samples * test_ratio)
+    validation_samples = total_samples - train_samples - test_samples
+    
+    # Ensure the dataset is shuffled before splitting
+    indices = np.arange(total_samples)
+    np.random.shuffle(indices)
+    
+    # Split the indices for each dataset
+    train_indices = indices[:train_samples]
+    test_indices = indices[train_samples:train_samples + test_samples]
+    validation_indices = indices[train_samples + test_samples:]
+    
+    # Helper function to extract subsets
+    def extract_subset(dataset, indices):
+        return [dataset[i] for i in indices]
+    
+    # Extract the subsets for each dataset
+    train_time = extract_subset(all_time, train_indices)
+    train_input = extract_subset(all_input, train_indices)
+    train_output = extract_subset(all_output, train_indices)
+    
+    test_time = extract_subset(all_time, test_indices)
+    test_input = extract_subset(all_input, test_indices)
+    test_output = extract_subset(all_output, test_indices)
+    
+    validation_time = extract_subset(all_time, validation_indices)
+    validation_input = extract_subset(all_input, validation_indices)
+    validation_output = extract_subset(all_output, validation_indices)
+    
+    return (train_time, train_input, train_output), (test_time, test_input, test_output), (validation_time, validation_input, validation_output)
 
 def reshape_inputs(inputs, time_steps, features):
     # Assuming `inputs` is a flat list of floats, we reshape it into [samples, time_steps, features]
